@@ -1,15 +1,17 @@
 from collections import deque   # Import deque (double-ended queue) for efficient BFS queue operations
 
 # Function to print the maze with path, start, and goal
-def print_maze(maze, path, start, goal):
+def print_maze(maze, path, start, goal1, goal2= None):
     rows, cols = len(maze), len(maze[0])   # Get maze dimensions (rows and columns)
     for r in range(rows):                  # Loop through each row
         row = ""                           # Start with an empty string to build the row
         for c in range(cols):              # Loop through each column in the row
             if (r, c) == start:            # If this cell is the start position
                 row += "S "                # Mark it as 'S'
-            elif (r, c) == goal:           # If this cell is the goal position
-                row += "G "                # Mark it as 'G'
+            elif (r, c) == goal1:           # If this cell is the first goal position
+                row += "G1 "                # Mark it as 'G1'
+            elif (r, c) == goal2:           # If this cell is the second goal position
+                row += "G2 "                # Mark it as 'G2'
             elif (r, c) in path:           # If this cell is part of the path
                 row += "M "                # Mark it with 'M'
             elif maze[r][c] == 1:          # If this cell is a wall
@@ -76,15 +78,3 @@ maze = [
 
 start = (0, 0)   # Starting position (row 0, col 0)
 goal = (29,29)    # Goal position (row 29, col 29)
-
-if __name__ == "__main__":
-    # 🔍 Find the Path using BFS
-    path = bfs_pathfinder(maze, start, goal)
-
-    # 📍 Show the Result
-    if path:
-        print(" Path found!\n")
-        print(f" Path length: {len(path)} steps\n")
-        print_maze(maze, path, start, goal)
-    else:
-        print(" No path found.")

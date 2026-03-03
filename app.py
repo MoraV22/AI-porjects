@@ -116,6 +116,7 @@ st.markdown("""
 
 # Main header
 st.markdown('<h1 class="main-header">AI Assignment 1</h1>', unsafe_allow_html=True)
+st.markdown('<h6 class="subtitle">Santiago Danie Mora Oropeza</h6>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Explore Knowledge Graphs, Case-Based Reasoning, Content Recommendation Chatbot & Maze Solving</p>', unsafe_allow_html=True)
 
 # Keep the selected view across reruns
@@ -498,7 +499,7 @@ elif st.session_state.selected_question == "q3":
         recommendations = q3.generate_recommendations(rec_prefs, content_db)
 
         if recommendations:
-            rec_text = "## Here are my top recommendations for you!\n\n"
+            rec_text = "##x Here are my top recommendations for you!\n\n"
             for i, rec in enumerate(recommendations[:5], 1):
                 c = rec["content"]
                 rec_text += f"### #{i} — {c['title']}\n"
@@ -552,8 +553,8 @@ elif st.session_state.selected_question == "q4":
     
     open_cell_labels = [f"({r}, {c})" for r, c in open_cells]
     
-    st.markdown("#### Configure Start & Goal")
-    c1, c2 = st.columns(2)
+    st.markdown("#### Configure Start & Goals")
+    c1, c2, c3 = st.columns(3)
     
     with c1:
         start_idx = st.selectbox(
@@ -565,68 +566,95 @@ elif st.session_state.selected_question == "q4":
         start = open_cells[start_idx]
     
     with c2:
-        # Default goal to last open cell
         default_goal_idx = len(open_cells) - 1
-        goal_idx = st.selectbox(
-            "🔴 Goal Position (row, col)",
+        goal1_idx = st.selectbox(
+            "🔴 Goal 1 (row, col)",
             options=range(len(open_cells)),
             format_func=lambda i: open_cell_labels[i],
             index=default_goal_idx,
         )
-        goal = open_cells[goal_idx]
+        goal1 = open_cells[goal1_idx]
     
-    if start == goal:
-        st.warning("Start and goal are the same cell. Please pick different positions.")
+    with c3:
+        goal2_idx = st.selectbox(
+            "🔵 Goal 2 (row, col) — optional",
+            options=[-1] + list(range(len(open_cells))),
+            format_func=lambda i: "None" if i == -1 else open_cell_labels[i],
+            index=0,
+        )
+        goal2 = open_cells[goal2_idx] if goal2_idx != -1 else None
     
+    if start == goal1:
+        st.warning("Start and Goal 1 are the same cell. Please pick different positions.")
+    if goal2 is not None and goal1 == goal2:
+        st.warning("Goal 1 and Goal 2 are the same cell. Please pick different positions.")
+
     if st.button("🔍 Find Path", use_container_width=True):
-        path = q4.bfs_pathfinder(maze, start, goal)
-        path_set = set(path) if path else set()
-        
-        if path:
-            st.success(f" Path found! Length: **{len(path)} steps**")
+        # --- BFS: Start → Goal 1 ---
+        path1 = q4.bfs_pathfinder(maze, start, goal1)
+        path1_set = set(path1) if path1 else set()
+
+        # --- BFS: Goal 1 → Goal 2 (if selected) ---
+        path2 = None
+        path2_set = set()
+        if goal2 is not None:
+            path2 = q4.bfs_pathfinder(maze, goal1, goal2)
+            path2_set = set(path2) if path2 else set()
+
+        # --- Status messages ---
+        if path1:
+            st.success(f"Start → Goal 1: path found — **{len(path1)} steps**")
         else:
-            st.error(" No path found between these positions.")
-        
-        # Build the maze as an HTML table for nice visual rendering
+            st.error("Start → Goal 1: no path found.")
+
+        if goal2 is not None:
+            if path2:
+                st.success(f"Goal 1 → Goal 2: path found — **{len(path2)} steps**")
+            else:
+                st.error("Goal 1 → Goal 2: no path found.")
+
+        # --- Maze Visualization ---
         st.markdown("#### Maze Visualization")
-        
-        # Color legend
-        st.markdown("""
+
+        legend = """
         <div style="display:flex; gap:18px; margin-bottom:10px; flex-wrap:wrap;">
             <span>🟢 <b>Start</b></span>
-            <span>🔴 <b>Goal</b></span>
-            <span>🟡 <b>Path</b></span>
+            <span>🔴 <b>Goal 1</b></span>
+        """
+        if goal2 is not None:
+            legend += '<span>🔵 <b>Goal 2</b></span>'
+        legend += """
+            <span>🟡 <b>Path 1</b></span>
+        """
+        if goal2 is not None:
+            legend += '<span>🟠 <b>Path 2</b></span>'
+        legend += """
             <span>⬛ <b>Wall</b></span>
             <span>⬜ <b>Open</b></span>
         </div>
-        """, unsafe_allow_html=True)
-        
+        """
+        st.markdown(legend, unsafe_allow_html=True)
+
         cell_size = 18
         html = '<div style="overflow-x:auto;"><table style="border-collapse:collapse;margin:auto;">'
         for r in range(rows):
             html += "<tr>"
             for c in range(cols):
                 if (r, c) == start:
-                    color = "#27ae60"   # green
-                    char = "S"
-                    text_color = "white"
-                elif (r, c) == goal:
-                    color = "#e74c3c"   # red
-                    char = "G"
-                    text_color = "white"
-                elif (r, c) in path_set:
-                    color = "#f1c40f"   # yellow
-                    char = "•"
-                    text_color = "#333"
+                    color = "#27ae60"; char = "S"; text_color = "white"
+                elif (r, c) == goal1:
+                    color = "#e74c3c"; char = "G1"; text_color = "white"
+                elif goal2 is not None and (r, c) == goal2:
+                    color = "#2980b9"; char = "G2"; text_color = "white"
+                elif (r, c) in path2_set:
+                    color = "#e67e22"; char = "•"; text_color = "#fff"
+                elif (r, c) in path1_set:
+                    color = "#f1c40f"; char = "•"; text_color = "#333"
                 elif maze[r][c] == 1:
-                    color = "#2c3e50"   # dark wall
-                    char = ""
-                    text_color = "#2c3e50"
+                    color = "#2c3e50"; char = ""; text_color = "#2c3e50"
                 else:
-                    color = "#ecf0f1"   # light open
-                    char = ""
-                    text_color = "#ecf0f1"
-                
+                    color = "#ecf0f1"; char = ""; text_color = "#ecf0f1"
+
                 html += (
                     f'<td style="width:{cell_size}px;height:{cell_size}px;'
                     f'background:{color};text-align:center;font-size:10px;'
@@ -635,40 +663,36 @@ elif st.session_state.selected_question == "q4":
                 )
             html += "</tr>"
         html += "</table></div>"
-        
+
         st.markdown(html, unsafe_allow_html=True)
-        
+
         # Show path details
-        if path:
-            with st.expander(" View Full Path Coordinates"):
-                path_str = " → ".join([f"({r},{c})" for r, c in path])
-                st.code(path_str, language=None)
+        if path1:
+            with st.expander("📋 Path 1 Coordinates (Start → Goal 1)"):
+                st.code(" → ".join([f"({r},{c})" for r, c in path1]), language=None)
+        if path2:
+            with st.expander("📋 Path 2 Coordinates (Goal 1 → Goal 2)"):
+                st.code(" → ".join([f"({r},{c})" for r, c in path2]), language=None)
     else:
-        # Show the plain maze without path
+        # Show the plain maze preview (no path yet)
         st.markdown("#### Maze Preview")
-        
+
         cell_size = 18
         html = '<div style="overflow-x:auto;"><table style="border-collapse:collapse;margin:auto;">'
         for r in range(rows):
             html += "<tr>"
             for c in range(cols):
                 if (r, c) == start:
-                    color = "#27ae60"
-                    char = "S"
-                    text_color = "white"
-                elif (r, c) == goal:
-                    color = "#e74c3c"
-                    char = "G"
-                    text_color = "white"
+                    color = "#27ae60"; char = "S"; text_color = "white"
+                elif (r, c) == goal1:
+                    color = "#e74c3c"; char = "G1"; text_color = "white"
+                elif goal2 is not None and (r, c) == goal2:
+                    color = "#2980b9"; char = "G2"; text_color = "white"
                 elif maze[r][c] == 1:
-                    color = "#2c3e50"
-                    char = ""
-                    text_color = "#2c3e50"
+                    color = "#2c3e50"; char = ""; text_color = "#2c3e50"
                 else:
-                    color = "#ecf0f1"
-                    char = ""
-                    text_color = "#ecf0f1"
-                
+                    color = "#ecf0f1"; char = ""; text_color = "#ecf0f1"
+
                 html += (
                     f'<td style="width:{cell_size}px;height:{cell_size}px;'
                     f'background:{color};text-align:center;font-size:10px;'
@@ -677,7 +701,7 @@ elif st.session_state.selected_question == "q4":
                 )
             html += "</tr>"
         html += "</table></div>"
-        
+
         st.markdown(html, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
